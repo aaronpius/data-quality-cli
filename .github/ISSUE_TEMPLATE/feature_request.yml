@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest a new check, source or workflow
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Problem or use case
+      description: What data-quality problem should dqcheck help solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Show an example command or YAML rule if possible.
