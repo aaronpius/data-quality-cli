@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -21,10 +20,16 @@ console = Console()
 
 def _show_profile(report: dict) -> None:
     summary = report["summary"]
-    console.print(
-        f"[bold]Rows:[/] {summary['rows']}  [bold]Columns:[/] {summary['columns']}  "
-        f"[bold]Duplicate rows:[/] {summary['duplicate_rows']} ({summary['duplicate_percent']:.2f}%)"
+    duplicate_text = (
+        f"[bold]Duplicate rows:[/] {summary['duplicate_rows']} "
+        f"({summary['duplicate_percent']:.2f}%)"
     )
+    console.print(
+        f"[bold]Rows:[/] {summary['rows']}  "
+        f"[bold]Columns:[/] {summary['columns']}  "
+        f"{duplicate_text}"
+    )
+
     table = Table(title="Column profile")
     table.add_column("Column")
     table.add_column("Type")
@@ -45,8 +50,18 @@ def _show_profile(report: dict) -> None:
 @app.command()
 def profile(
     file: Path = typer.Argument(..., exists=True, dir_okay=False, readable=True),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write report to a file."),
-    format: str = typer.Option("markdown", "--format", "-f", help="markdown or json"),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write report to a file.",
+    ),
+    format: str = typer.Option(
+        "markdown",
+        "--format",
+        "-f",
+        help="markdown or json",
+    ),
 ) -> None:
     """Profile a dataset for nulls, duplicates, cardinality and numeric outliers."""
     df = load_dataframe(file)
@@ -60,8 +75,14 @@ def profile(
 @app.command()
 def check(
     file: Path = typer.Argument(..., exists=True, dir_okay=False, readable=True),
-    rules: Path = typer.Option(..., "--rules", "-r", exists=True, dir_okay=False),
-    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    rules: Path = typer.Option(
+        ...,
+        "--rules",
+        "-r",
+        exists=True,
+        dir_okay=False,
+    ),
+    output: Path | None = typer.Option(None, "--output", "-o"),
     format: str = typer.Option("markdown", "--format", "-f"),
 ) -> None:
     """Run YAML-defined data-quality rules. Exits with code 1 when any rule fails."""
