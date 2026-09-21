@@ -1,0 +1,19 @@
+dataset:
+  min_rows: 1
+  max_duplicate_percent: 10
+
+columns:
+  id:
+    max_null_percent: 0
+    unique: true
+  email:
+    max_null_percent: 5
+  status:
+    allowed_values:
+      - active
+      - inactive
+  age:
+    min: 0
+    max: 120
+  spend:
+    min: 0
