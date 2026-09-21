@@ -22,8 +22,10 @@ class RuleResult:
 def load_rules(path: str | Path) -> dict[str, Any]:
     with Path(path).open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
+
     if not isinstance(data, dict):
         raise ValueError("Rules file must contain a YAML mapping at the top level.")
+
     return data
 
 
@@ -34,23 +36,25 @@ def evaluate_rules(df: pd.DataFrame, config: dict[str, Any]) -> list[RuleResult]
     max_duplicate_percent = dataset_rules.get("max_duplicate_percent")
     if max_duplicate_percent is not None:
         actual = (df.duplicated().sum() / len(df) * 100) if len(df) else 0.0
+        limit = float(max_duplicate_percent)
         results.append(
             RuleResult(
                 rule="max_duplicate_percent",
                 column=None,
-                passed=actual <= float(max_duplicate_percent),
-                message=f"Duplicate rows: {actual:.2f}% (limit {float(max_duplicate_percent):.2f}%)",
+                passed=actual <= limit,
+                message=f"Duplicate rows: {actual:.2f}% (limit {limit:.2f}%)",
             )
         )
 
     min_rows = dataset_rules.get("min_rows")
     if min_rows is not None:
+        minimum_rows = int(min_rows)
         results.append(
             RuleResult(
                 rule="min_rows",
                 column=None,
-                passed=len(df) >= int(min_rows),
-                message=f"Rows: {len(df)} (minimum {int(min_rows)})",
+                passed=len(df) >= minimum_rows,
+                message=f"Rows: {len(df)} (minimum {minimum_rows})",
             )
         )
 
@@ -73,12 +77,13 @@ def evaluate_rules(df: pd.DataFrame, config: dict[str, Any]) -> list[RuleResult]
         max_null_percent = rules.get("max_null_percent")
         if max_null_percent is not None:
             actual = (series.isna().sum() / len(df) * 100) if len(df) else 0.0
+            limit = float(max_null_percent)
             results.append(
                 RuleResult(
                     rule="max_null_percent",
                     column=column,
-                    passed=actual <= float(max_null_percent),
-                    message=f"Nulls: {actual:.2f}% (limit {float(max_null_percent):.2f}%)",
+                    passed=actual <= limit,
+                    message=f"Nulls: {actual:.2f}% (limit {limit:.2f}%)",
                 )
             )
 
@@ -95,7 +100,8 @@ def evaluate_rules(df: pd.DataFrame, config: dict[str, Any]) -> list[RuleResult]
 
         allowed_values = rules.get("allowed_values")
         if allowed_values is not None:
-            invalid = series.dropna()[~series.dropna().isin(allowed_values)]
+            non_null = series.dropna()
+            invalid = non_null[~non_null.isin(allowed_values)]
             results.append(
                 RuleResult(
                     rule="allowed_values",
