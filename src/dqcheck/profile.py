@@ -51,11 +51,13 @@ def _iqr_outliers(series: pd.Series) -> int:
     numeric = pd.to_numeric(series, errors="coerce").dropna()
     if len(numeric) < 4:
         return 0
+
     q1 = numeric.quantile(0.25)
     q3 = numeric.quantile(0.75)
     iqr = q3 - q1
     if iqr == 0:
         return 0
+
     lower = q1 - 1.5 * iqr
     upper = q3 + 1.5 * iqr
     return int(((numeric < lower) | (numeric > upper)).sum())
@@ -72,6 +74,11 @@ def profile_dataframe(df: pd.DataFrame) -> DatasetProfile:
         non_null = rows - null_count
         unique_count = int(series.nunique(dropna=True))
         is_numeric = pd.api.types.is_numeric_dtype(series)
+        is_datetime = pd.api.types.is_datetime64_any_dtype(series)
+        supports_bounds = non_null and (is_numeric or is_datetime)
+
+        minimum = _safe_scalar(series.min()) if supports_bounds else None
+        maximum = _safe_scalar(series.max()) if supports_bounds else None
 
         profiles.append(
             ColumnProfile(
@@ -80,12 +87,20 @@ def profile_dataframe(df: pd.DataFrame) -> DatasetProfile:
                 rows=rows,
                 non_null=non_null,
                 null_count=null_count,
-                null_percent=round((null_count / rows * 100) if rows else 0.0, 2),
+                null_percent=round(
+                    (null_count / rows * 100) if rows else 0.0,
+                    2,
+                ),
                 unique_count=unique_count,
-                unique_percent=round((unique_count / non_null * 100) if non_null else 0.0, 2),
-                min=_safe_scalar(series.min()) if non_null and (is_numeric or pd.api.types.is_datetime64_any_dtype(series)) else None,
-                max=_safe_scalar(series.max()) if non_null and (is_numeric or pd.api.types.is_datetime64_any_dtype(series)) else None,
-                mean=round(float(series.mean()), 4) if non_null and is_numeric else None,
+                unique_percent=round(
+                    (unique_count / non_null * 100) if non_null else 0.0,
+                    2,
+                ),
+                min=minimum,
+                max=maximum,
+                mean=round(float(series.mean()), 4)
+                if non_null and is_numeric
+                else None,
                 outlier_count=_iqr_outliers(series) if is_numeric else None,
             )
         )
@@ -94,6 +109,9 @@ def profile_dataframe(df: pd.DataFrame) -> DatasetProfile:
         rows=rows,
         columns=len(df.columns),
         duplicate_rows=duplicate_rows,
-        duplicate_percent=round((duplicate_rows / rows * 100) if rows else 0.0, 2),
+        duplicate_percent=round(
+            (duplicate_rows / rows * 100) if rows else 0.0,
+            2,
+        ),
         column_profiles=profiles,
     )
