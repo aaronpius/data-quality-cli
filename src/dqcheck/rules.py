@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -139,4 +140,47 @@ def evaluate_rules(df: pd.DataFrame, config: dict[str, Any]) -> list[RuleResult]
                 )
             )
 
+        pattern = rules.get("regex")
+        if pattern is not None:
+            results.append(_evaluate_regex(column, series, pattern))
+
     return results
+
+
+def _evaluate_regex(column: str, series: pd.Series, pattern: Any) -> RuleResult:
+    if not isinstance(pattern, str) or pattern == "":
+        return RuleResult(
+            rule="regex",
+            column=column,
+            passed=False,
+            message="Invalid regular expression: pattern must be a non-empty string.",
+        )
+
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        return RuleResult(
+            rule="regex",
+            column=column,
+            passed=False,
+            message=f"Invalid regular expression: {exc}",
+        )
+
+    non_null = series.dropna()
+    if len(non_null) == 0:
+        return RuleResult(
+            rule="regex",
+            column=column,
+            passed=True,
+            message="Invalid values: 0 (nulls ignored)",
+        )
+
+    as_text = non_null.astype(str)
+    invalid = as_text[~as_text.str.fullmatch(compiled.pattern, na=False)]
+    count = int(len(invalid))
+    return RuleResult(
+        rule="regex",
+        column=column,
+        passed=count == 0,
+        message=f"Invalid values: {count}",
+    )

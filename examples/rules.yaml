@@ -8,6 +8,7 @@ columns:
     unique: true
   email:
     max_null_percent: 5
+    regex: "^[^@]+@[^@]+\\.[^@]+$"
   status:
     allowed_values:
       - active
